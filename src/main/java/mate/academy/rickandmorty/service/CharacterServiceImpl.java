@@ -3,10 +3,8 @@ package mate.academy.rickandmorty.service;
 import jakarta.annotation.PostConstruct;
 import jakarta.persistence.EntityNotFoundException;
 import java.util.List;
-import java.util.Optional;
-import java.util.Random;
 import lombok.RequiredArgsConstructor;
-import mate.academy.rickandmorty.dto.external.CharacterListDto;
+import mate.academy.rickandmorty.dto.external.CharacterDto;
 import mate.academy.rickandmorty.dto.internal.CharacterResponseDto;
 import mate.academy.rickandmorty.mapper.CharacterMapper;
 import mate.academy.rickandmorty.model.Character;
@@ -19,15 +17,15 @@ public class CharacterServiceImpl implements CharacterService {
     private final CharacterRepository characterRepository;
     private final CharacterMapper characterMapper;
     private final CharacterClient characterClient;
-    private final Random random = new Random();
-    private int numberOfCharacters;
 
     @Override
     public CharacterResponseDto getRandomCharacter() {
-        Long randomId = random.nextLong(numberOfCharacters);
-        Optional<Character> randomCharacter = characterRepository.findById(randomId);
-        return characterMapper.toDto(randomCharacter.orElseThrow(() ->
-                new EntityNotFoundException("Can't find character by id: " + randomId)));
+        long count = characterRepository.count();
+        long randomId = (long) (Math.random() * count);
+        Character character = characterRepository.findById(randomId)
+                .orElseThrow(() ->
+                        new EntityNotFoundException("Can't find character by id: " + randomId));
+        return characterMapper.toDto(character);
     }
 
     @Override
@@ -39,11 +37,10 @@ public class CharacterServiceImpl implements CharacterService {
 
     @PostConstruct
     public void init() {
-        String dataFromApi = characterClient.fetchDataFromApi();
-        CharacterListDto characterListDto = characterClient.parseResponse(dataFromApi);
-        numberOfCharacters = characterListDto.characters().size();
-        characterRepository.saveAll(characterListDto.characters().stream()
+        List<CharacterDto> characterDtos = characterClient.fetchAllCharacters();
+        List<Character> characters = characterDtos.stream()
                 .map(characterMapper::toModel)
-                .toList());
+                .toList();
+        characterRepository.saveAll(characters);
     }
 }

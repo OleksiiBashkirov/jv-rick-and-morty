@@ -9,7 +9,10 @@ import java.net.URISyntaxException;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.util.ArrayList;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
+import mate.academy.rickandmorty.dto.external.CharacterDto;
 import mate.academy.rickandmorty.dto.external.CharacterListDto;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
@@ -22,20 +25,32 @@ public class CharacterClient {
     private final ObjectMapper objectMapper;
     private final HttpClient httpClient = HttpClient.newHttpClient();
 
-    public String fetchDataFromApi() {
-        try {
-            HttpRequest request = HttpRequest.newBuilder()
-                    .GET()
-                    .uri(new URI(url))
-                    .build();
-            HttpResponse<String> response = httpClient.send(
-                    request,
-                    HttpResponse.BodyHandlers.ofString()
-            );
-            return response.body();
-        } catch (IOException | InterruptedException | URISyntaxException e) {
-            throw new RuntimeException("Can't fetch data from API.", e);
+    public List<CharacterDto> fetchAllCharacters() {
+        List<CharacterDto> allCharacters = new ArrayList<>();
+        int page = 1;
+        boolean hasMorePages = true;
+
+        while (hasMorePages) {
+            try {
+                HttpRequest request = HttpRequest.newBuilder()
+                        .GET()
+                        .uri(new URI(url + "?page=" + page))
+                        .build();
+                HttpResponse<String> response = httpClient.send(
+                        request,
+                        HttpResponse.BodyHandlers.ofString()
+                );
+
+                String responseBody = response.body();
+                CharacterListDto characterListDto = parseResponse(responseBody);
+                allCharacters.addAll(characterListDto.characters());
+                hasMorePages = characterListDto.info().next() != null;
+                page++;
+            } catch (IOException | InterruptedException | URISyntaxException e) {
+                throw new RuntimeException("Can't fetch data from API.", e);
+            }
         }
+        return allCharacters;
     }
 
     public CharacterListDto parseResponse(String responseBody) {
