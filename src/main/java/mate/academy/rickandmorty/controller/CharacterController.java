@@ -25,7 +25,7 @@ public class CharacterController {
         return characterService.getRandomCharacter();
     }
 
-    @GetMapping("/search")
+    @GetMapping()
     @Operation(summary = "Search characters by name",
             description = "Search for characters whose name contains the specified string.")
     public List<CharacterResponseDto> search(@RequestParam String name) {
